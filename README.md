@@ -21,7 +21,7 @@ Every multi-agent result includes an expanded **Council work** map showing the c
 
 ## Private agent audiences
 
-The Command Console defaults to **Vader**, who reads the request and routes the smallest useful council. The **Talk to** selector also opens separate one-to-one threads with Fett, Tarkin, or Palpatine. A specialist answers directly in their own voice with candid independent judgment; no Vader synthesis, council handoff, or handoff-board entry is created. Each audience has isolated conversation context, while every reply still uses the same owner profile, model controls, bounded research, and nightly memory policy.
+The Command Console defaults to **Vader**, who reads the request and routes the smallest useful council. The **Talk to** selector also opens separate threads with Fett, Tarkin, or Palpatine. A specialist answers directly in their own voice with candid independent judgment; no Vader synthesis or public handoff-board entry is created. Palpatine is the exception to strict one-to-one staffing: when a Luke-related question genuinely benefits from the intern's first-hand technical view, Palpatine privately brings Luke into that answer, keeps managerial accountability, and makes the two roles visible. Performance, readiness, and other management judgments stay with Palpatine alone. Each audience has isolated conversation context, while every reply still uses the same owner profile, model controls, bounded research, and nightly memory policy.
 
 Explicitly naming an agent in Vader's routed thread is also a hard routing signal. If the prompt asks for Palpatine, Tarkin, or Fett, that agent is included in the visible council work instead of being left to a model planner's discretion.
 
@@ -49,7 +49,7 @@ Every audience thread has an explicit **New chat** action. It is available after
 
 The board records short task handoffs directly from task lifecycle events. These messages are deterministic and add no model cost. They remain visually separate from the live Watercooler chat.
 
-From 7 AM through 11 PM Eastern, Cloudflare-hosted Qwen creates natural two-to-four-line exchanges at deliberately varied intervals. Most bursts continue an open conversational thread; other bursts introduce a fresh news, holiday, or office-life topic. A colleague may join an existing subject without forcing the same pair to reply forever. The generator receives an ordered recent transcript, avoids recently used topics, and rejects semantically similar lines rather than checking exact duplicates only. Qwen has a varied deterministic fallback, so chat generation can never block task maintenance.
+From 7 AM through 11 PM Eastern, Cloudflare-hosted Qwen creates natural two-to-four-line exchanges at deliberately varied intervals. Most bursts continue an open conversational thread; other bursts introduce a fresh news, holiday, or office-life topic. A colleague may join an existing subject without forcing the same pair to reply forever. Luke is guaranteed periodic inclusion without dominating the room: he can discuss ordinary life, news, or culture, while some exchanges invite an early idea, ask for evidence or tests, or teach him the unglamorous context behind the work. Colleagues treat him as a gifted intern rather than a peer executive, and Palpatine appears more often as his direct manager. The generator receives an ordered recent transcript, avoids recently used topics, and rejects semantically similar lines rather than checking exact duplicates only. Qwen has a varied deterministic fallback, so chat generation can never block task maintenance.
 
 On the first Cron tick of each Eastern calendar day, the prior day's watercooler messages and task handoff/note traffic are deleted from D1. Daily sprint reviews, completed task reports, and relationship state remain intact. The dashboard polls every five seconds, so the cleared boards refresh automatically.
 
@@ -59,9 +59,9 @@ Vader also runs a no-token weekday leadership cadence that rotates through 1:1s 
 
 ## Luke’s Workshop
 
-Luke Skywalker is a rotating software intern, not a production administrator. At 10:30 AM Eastern every Tuesday and Friday, one GPT-6 Sol planning call reviews recent task friction, failures, existing capabilities, recent proposals, and the watercooler conversation. It creates at most one narrow, reversible proposal for that rotation. Repeated or decorative ideas are explicitly rejected by the planning prompt.
+Luke Skywalker is a rotating software intern who reports directly to Palpatine, not a production administrator. At 10:30 AM Eastern every Tuesday and Friday, one GPT-6 Sol planning call reviews recent task friction, failures, existing capabilities, recent proposals, and the watercooler conversation. It creates at most one narrow, reversible draft for that rotation. A separate Palpatine review then approves it or revises it into the smallest safe precursor before it is visible to the Commander. Repeated, decorative, duplicative, or over-scoped ideas are stopped at that management gate.
 
-The dashboard records the problem, smallest useful change, affected agents, permissions, acceptance checks, estimated cost, model route, and every approval event. The flow has two human gates:
+The dashboard records Luke's proposal, Palpatine's decision and review, the final problem and scope, affected agents, permissions, acceptance checks, estimated cost, model route, and every approval event. Palpatine's management gate comes first; the flow still has two separate human gates:
 
 1. **Approve isolated build** queues the proposal for the Mac. Luke uses GPT-6 Luna by default inside a dedicated Git worktree.
 2. **Approve deployment** appears only after build and lint evidence returns. The runner repeats the checks, deploys, health-checks the live Worker, rolls Cloudflare back on a failed health check, and fast-forwards the approved commit into the main checkout.

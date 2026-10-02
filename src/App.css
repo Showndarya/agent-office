@@ -450,6 +450,14 @@ main { min-height: 100vh; }
 .proposal-status.failed, .proposal-status.blocked { color: #ed858a; }
 .risk-chip { flex: 0 0 auto; padding: 5px 7px; color: #b7dff7; background: rgba(99, 179, 237, .1); border: 1px solid rgba(99, 179, 237, .2); border-radius: 20px; font-size: 8px; font-weight: 750; text-transform: capitalize; }
 .risk-chip.medium { color: #edc279; background: rgba(213, 161, 80, .09); border-color: rgba(213, 161, 80, .2); }
+.manager-review { display: flex; align-items: flex-start; gap: 11px; margin-top: 13px; padding: 11px; background: linear-gradient(135deg, rgba(128, 89, 185, .13), rgba(99, 179, 237, .055)); border: 1px solid rgba(159, 119, 215, .2); border-radius: 11px; }
+.manager-review.revised { border-color: rgba(213, 161, 80, .24); }
+.manager-review-portraits { display: flex; flex: 0 0 auto; align-items: center; padding-left: 5px; }
+.manager-review-portraits > span { margin: 0 4px 0 0; color: #7d6a92; font-size: 9px; }
+.manager-review > div:last-child { min-width: 0; }
+.manager-review strong { color: #c7a8ee; font-size: 8px; letter-spacing: .045em; text-transform: uppercase; }
+.manager-review p { margin: 5px 0 0; color: #a09aa9; font-size: 9px; line-height: 1.5; }
+.manager-review small { display: block; margin-top: 5px; color: #716d78; font-size: 7px; }
 .proposal-copy { display: grid; gap: 9px; margin-top: 14px; }
 .proposal-copy > div { padding: 10px; background: rgba(255, 255, 255, .024); border-radius: 10px; }
 .proposal-copy strong, .proposal-details strong, .workshop-result > strong { color: #a7d9f7; font-size: 8px; letter-spacing: .05em; text-transform: uppercase; }
@@ -763,7 +771,7 @@ footer { margin-top: 44px; color: #66666f; font-size: 11px; text-align: center; 
   .schedule-options { grid-template-columns: repeat(5, minmax(0, 1fr)); }
   .team-picker { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .schedule-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }
-  .workshop-guardrails { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  .workshop-guardrails { grid-template-columns: repeat(4, minmax(0, 1fr)); }
   .proposal-copy, .proposal-detail-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
   .proposal-detail-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .proposal-list { grid-template-columns: repeat(2, minmax(0, 1fr)); }

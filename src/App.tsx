@@ -142,6 +142,11 @@ type ImprovementProposal = {
   estimatedCost: string
   planModel: string
   actionModel: string
+  managerAgentId: string
+  managerDecision: 'approved' | 'revised'
+  managerReview: string
+  managerModel: string
+  managerReviewedAt: string
   status: ImprovementStatus
   branchName: string | null
   baseCommit: string | null
@@ -577,7 +582,9 @@ function contributionText(agentId: string, taskType: TaskType) {
     : taskType === 'research'
       ? 'Validated the evidence, challenged weak assumptions, and structured the answer.'
       : 'Tested the assumptions and supplied the technical or implementation structure.'
-  if (agentId === 'luke') return 'Prototyped the approved improvement inside a guarded worktree and returned test evidence for review.'
+  if (agentId === 'luke') return taskType === 'build'
+    ? 'Prototyped the approved improvement inside a guarded worktree and returned test evidence to Palpatine.'
+    : 'Contributed first-hand workshop or technical context as the intern; Palpatine retained managerial judgment and accountability.'
   return 'Pressure-tested the strategy, risks, incentives, and implementation path while mentoring the specialists.'
 }
 
@@ -586,11 +593,13 @@ function CouncilContributions({
   agents,
   taskType,
   reason,
+  privateAudience = false,
 }: {
   ids: string[]
   agents: Agent[]
   taskType: TaskType
   reason?: string | null
+  privateAudience?: boolean
 }) {
   const members = [...new Set(ids)]
     .map((id) => agents.find((agent) => agent.id === id))
@@ -599,7 +608,7 @@ function CouncilContributions({
 
   return (
     <details className="contribution-map" open>
-      <summary>Council work <span>{members.length} contributors</span></summary>
+      <summary>{privateAudience ? 'Private consultation' : 'Council work'} <span>{members.length} contributors</span></summary>
       {reason && <p className="contribution-reason">{reason}</p>}
       <div className="contribution-list">
         {members.map((agent) => (
@@ -613,7 +622,9 @@ function CouncilContributions({
           </div>
         ))}
       </div>
-      <p className="contribution-truth">One bounded answer call used these assigned functions; the handoff and return trail remains visible on the Comms Board.</p>
+      <p className="contribution-truth">{privateAudience
+        ? 'One bounded answer call used these roles. The private conversation stays out of the public handoff board.'
+        : 'One bounded answer call used these assigned functions; the handoff and return trail remains visible on the Comms Board.'}</p>
     </details>
   )
 }
@@ -635,7 +646,7 @@ const audienceOptions = [
   { id: 'atlas', name: 'Darth Vader', label: 'Vader', hint: 'Routes the council', emoji: '◉' },
   { id: 'scout', name: 'Boba Fett', label: 'Fett', hint: 'Private field view', emoji: '⌖' },
   { id: 'pixel', name: 'Grand Moff Tarkin', label: 'Tarkin', hint: 'Private architecture view', emoji: '△' },
-  { id: 'muse', name: 'Emperor Palpatine', label: 'Palpatine', hint: 'Private strategic view', emoji: '✦' },
+  { id: 'muse', name: 'Emperor Palpatine', label: 'Palpatine', hint: 'Strategy · manages Luke', emoji: '✦' },
 ] as const
 
 function statusLabel(task: Task) {
@@ -649,7 +660,7 @@ function statusLabel(task: Task) {
 
 function improvementStatusLabel(status: ImprovementStatus) {
   return {
-    proposed: 'Awaiting build approval',
+    proposed: 'Palpatine cleared · awaiting your build approval',
     build_approved: 'Queued for Mac',
     building: 'Building in worktree',
     awaiting_deploy: 'Awaiting deploy approval',
@@ -1042,7 +1053,11 @@ function App() {
                           className={audienceAgentId === option.id ? 'selected' : ''}
                           type="button"
                           onClick={() => setAudienceAgentId(option.id)}
-                          title={option.id === 'atlas' ? 'Vader reads the request and assigns the useful council.' : `${option.name} answers directly. No handoff to Vader or the council.`}
+                          title={option.id === 'atlas'
+                            ? 'Vader reads the request and assigns the useful council.'
+                            : option.id === 'muse'
+                              ? 'Palpatine answers privately and may consult Luke when first-hand intern context is useful.'
+                              : `${option.name} answers directly. No handoff to Vader or the council.`}
                         >
                           <AgentPortrait id={option.id} name={agent?.name || option.name} fallback={agent?.emoji || option.emoji} className="audience-portrait" />
                           <span><strong>{option.label}</strong><small>{option.hint}</small></span>
@@ -1072,7 +1087,9 @@ function App() {
                     <div className="command-thread-empty">
                       <span>◉</span>
                       <p>{directAudience
-                        ? `This is your private line to ${selectedAudience.name}. You will get that agent’s candid view without a council handoff.`
+                        ? audienceAgentId === 'muse'
+                          ? 'This is your private line to Palpatine. He answers as Luke’s manager and may bring Luke in when first-hand technical or intern context would improve the answer.'
+                          : `This is your private line to ${selectedAudience.name}. You will get that agent’s candid view without a council handoff.`
                         : 'Start anywhere. Vader remembers this thread and assigns the smallest useful council for each request.'}</p>
                     </div>
                   )}
@@ -1104,6 +1121,7 @@ function App() {
                             agents={agents}
                             taskType={message.mode}
                             reason={message.teamReason}
+                            privateAudience={message.audienceAgentId !== 'atlas'}
                           />
                         )}
                       </div>
@@ -1152,7 +1170,9 @@ function App() {
               {taskType === 'build'
                 ? runnerOnline ? 'Build is a separate one-off order. Your Mac is online, so Tarkin can begin shortly.' : 'Build is separate from chat and waits safely until your Mac wakes.'
                 : directAudience
-                  ? `${chatRetention}. ${selectedAudience.name} answers directly with an independent view; Vader and the council are not invoked.`
+                  ? audienceAgentId === 'muse'
+                    ? `${chatRetention}. Palpatine answers privately as Luke’s manager. He may consult Luke for first-hand context; Vader and the wider council stay out.`
+                    : `${chatRetention}. ${selectedAudience.name} answers directly with an independent view; Vader and the council are not invoked.`
                 : modelMode === 'auto'
                   ? `${chatRetention}. Auto uses the best-value model; Vader assigns the smallest useful council after reading the request.`
                   : `${modelModes.find((mode) => mode.id === modelMode)?.label} uses ${modelModes.find((mode) => mode.id === modelMode)?.hint}. Vader still decides the team, and it runs while your Mac is closed.`}
@@ -1359,11 +1379,12 @@ function App() {
                 <div>
                   <p className="section-label">Rotating software intern</p>
                   <h3>Curious enough to ask. Guarded enough to wait.</h3>
-                  <p>Luke listens for recurring friction in tasks and the watercooler, then proposes one small, testable capability at a time.</p>
+                  <p>Luke reports to Palpatine, listens for recurring friction in tasks and the watercooler, then proposes one small, testable capability at a time.</p>
                 </div>
               </div>
               <div className="workshop-guardrails">
-                <div><strong>Plan</strong><span>Sol · {workshopData.rotationSchedule}</span></div>
+                <div><strong>Luke plans</strong><span>Sol · {workshopData.rotationSchedule}</span></div>
+                <div><strong>Palpatine reviews</strong><span>Approve or revise before you see it</span></div>
                 <div><strong>Build</strong><span>Luna · isolated Mac worktree</span></div>
                 <div><strong>Release</strong><span>Separate approval · health check · rollback</span></div>
               </div>
@@ -1391,6 +1412,20 @@ function App() {
                       </div>
                       <span className={`risk-chip ${proposal.riskLevel}`}>{proposal.riskLevel} risk</span>
                     </div>
+                    {proposal.managerReview && (
+                      <div className={`manager-review ${proposal.managerDecision}`}>
+                        <div className="manager-review-portraits">
+                          <AgentPortrait id="luke" name="Luke Skywalker" fallback="⌘" className="proposal-portrait" />
+                          <span>→</span>
+                          <AgentPortrait id="muse" name="Emperor Palpatine" fallback="✦" className="proposal-portrait" />
+                        </div>
+                        <div>
+                          <strong>Palpatine {proposal.managerDecision === 'revised' ? 'revised & cleared' : 'approved'} this first</strong>
+                          <p>{proposal.managerReview}</p>
+                          <small>{proposal.managerModel} · now awaiting your decision</small>
+                        </div>
+                      </div>
+                    )}
                     <div className="proposal-copy">
                       <div><strong>Friction</strong><p>{proposal.problem}</p></div>
                       <div><strong>Smallest useful change</strong><p>{proposal.proposal}</p></div>
