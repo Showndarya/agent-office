@@ -543,12 +543,7 @@ function Icon({ name }: { name: 'home' | 'team' | 'tasks' | 'sparkles' }) {
   return <svg viewBox="0 0 22 22" aria-hidden="true">{paths[name]}</svg>
 }
 
-const agentPortraits: Record<string, { src: string; position: string; scale?: number; origin?: string }> = {
-  atlas: { src: '/agents/vader.jpeg', position: '50% 45%' },
-  scout: { src: '/agents/fett.jpeg', position: '50% 17%', scale: 2.15, origin: '50% 18%' },
-  pixel: { src: '/agents/tarkin.jpeg', position: '50% 43%' },
-  muse: { src: '/agents/palpatine.jpeg', position: '50% 43%' },
-}
+const agentPortraits: Record<string, { src: string; position: string; scale?: number; origin?: string }> = {}
 
 function AgentPortrait({
   id,
@@ -563,7 +558,16 @@ function AgentPortrait({
 }) {
   const portrait = id ? agentPortraits[id] : undefined
   if (id === 'luke') return <span className={`agent-portrait luke-portrait ${className}`.trim()} title={name || undefined}>⌘</span>
-  if (!portrait) return <span className={className}>{fallback || '●'}</span>
+  if (!portrait) {
+    return (
+      <span
+        className={`agent-portrait agent-mark agent-mark-${id || 'unknown'} ${className}`.trim()}
+        title={name || undefined}
+      >
+        {fallback || '●'}
+      </span>
+    )
+  }
   return (
     <span className={`agent-portrait ${className}`.trim()} title={name || undefined}>
       <img
@@ -1067,7 +1071,7 @@ function App() {
             <span>Imperial Command</span>
           </a>
           <div className="online-pill"><span className="pulse" /> Command network online</div>
-          <button className="avatar" type="button" aria-label="Your profile">SM</button>
+          <button className="avatar" type="button" aria-label="Your profile">YOU</button>
         </header>
 
         <div className="content">
@@ -1187,7 +1191,7 @@ function App() {
                   {visibleCommandMessages.map((message) => (
                     <div className={`command-message ${message.role} ${message.status}`} key={message.id}>
                       {message.role === 'user'
-                        ? <span className="command-message-avatar user-avatar">SM</span>
+                        ? <span className="command-message-avatar user-avatar">YOU</span>
                         : <AgentPortrait id={message.agentId} name={message.agentName} fallback={message.agentEmoji} className="command-message-avatar" />}
                       <div className="command-bubble">
                         <div className="command-message-meta">
@@ -1282,7 +1286,7 @@ function App() {
 
             <article className="profile-card">
               <div className="profile-intro">
-                <div className="profile-orb">SM</div>
+                <div className="profile-orb">YOU</div>
                 <div>
                   <p className="section-label">Known, not assumed</p>
                   <h3>{profileData.profile?.displayName || 'Commander'}</h3>
@@ -1302,7 +1306,7 @@ function App() {
                 <small>{profileData.nodes.length} memories · {profileData.vectorStatus.pending ? `${profileData.vectorStatus.pending} embedding` : 'semantic index active'}</small>
               </div>
               <div className="knowledge-graph">
-                <div className="knowledge-root"><span>SM</span><strong>You</strong><small>source of truth</small></div>
+                <div className="knowledge-root"><span>YOU</span><strong>You</strong><small>source of truth</small></div>
                 <div className="knowledge-nodes">
                   {profileData.nodes.map((node) => {
                     const relation = profileData.edges.find((edge) => edge.toNodeId === node.id)?.relation.replaceAll('_', ' ') || node.category

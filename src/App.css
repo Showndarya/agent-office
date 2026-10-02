@@ -233,6 +233,11 @@ main { min-height: 100vh; }
 .command-message.user { flex-direction: row-reverse; padding: 0 0 0 13%; }
 .agent-portrait { display: inline-grid; place-items: center; overflow: hidden; flex: 0 0 auto; background: #121217; border: 1px solid rgba(255, 255, 255, .12); }
 .agent-portrait img { width: 100%; height: 100%; object-fit: cover; }
+.agent-mark { color: #f5f4f7; font-size: .72em; font-weight: 900; line-height: 1; text-shadow: 0 1px 10px rgba(255, 255, 255, .28); }
+.agent-mark-atlas { background: radial-gradient(circle at 34% 28%, #7e242c, #15080a 62%); border-color: rgba(227, 27, 35, .52); }
+.agent-mark-scout { background: radial-gradient(circle at 34% 28%, #60765b, #0c120d 62%); border-color: rgba(126, 155, 118, .52); }
+.agent-mark-pixel { background: radial-gradient(circle at 34% 28%, #666a73, #111216 62%); border-color: rgba(183, 186, 194, .45); }
+.agent-mark-muse { background: radial-gradient(circle at 34% 28%, #5a367f, #100918 62%); border-color: rgba(139, 92, 246, .52); }
 .luke-portrait { color: #ccecff; background: radial-gradient(circle at 35% 30%, #26658b, #08141e 62%); border-color: rgba(99, 179, 237, .5); box-shadow: inset 0 0 18px rgba(99, 179, 237, .18), 0 0 22px rgba(99, 179, 237, .16); font-size: .82em; font-weight: 900; }
 .command-message-avatar { display: grid; place-items: center; flex: 0 0 auto; width: 30px; height: 30px; overflow: hidden; color: #fff; background: #111117; border: 1px solid rgba(227, 27, 35, .38); border-radius: 50%; font-size: 12px; font-weight: 850; }
 .command-message-avatar.user-avatar { color: #ff8b8f; background: #241216; border-color: rgba(227, 27, 35, .32); font-size: 8px; }

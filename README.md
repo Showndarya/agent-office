@@ -9,6 +9,10 @@
 
 Agent Office turns a private AI chat into a small operating system for ongoing work. A Cloudflare Worker keeps the office available from a phone, D1 holds auditable state, Vectorize recalls useful preferences without retaining every raw conversation, and an optional Python runner performs approved build work on your own computer.
 
+![Agent Office dashboard walkthrough showing routed chat, scheduled missions, the comms board, tasks, and the team hierarchy](docs/assets/agent-office-demo.gif)
+
+*A 15-second walkthrough using synthetic demo data—no private tasks, conversations, or profile information.*
+
 The included interface is an unofficial, fan-themed example called **Imperial Command**. Replace the names, voices, and theme with your own cast. No third-party character artwork is distributed in this repository, and the project is not affiliated with or endorsed by Lucasfilm or Disney.
 
 ## Why this is different
