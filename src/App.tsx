@@ -14,6 +14,9 @@ type Agent = {
   emoji: string
   color: string
   status: 'ready' | 'busy' | 'offline'
+  managerAgentId: string | null
+  joinedOn: string | null
+  education: string
 }
 
 type Task = {
@@ -31,6 +34,7 @@ type Task = {
   scheduleId: number | null
   scheduleName: string | null
   archiveKey: string | null
+  archiveRetained: number
   teamAgents: string[]
   collaborators: string[]
   allowRecruits: number
@@ -575,6 +579,54 @@ function AgentPortrait({
   )
 }
 
+function tenureLabel(joinedOn: string | null) {
+  if (!joinedOn) return 'Tenure pending'
+  const start = new Date(`${joinedOn}T12:00:00Z`)
+  const now = new Date()
+  let months = (now.getUTCFullYear() - start.getUTCFullYear()) * 12
+    + now.getUTCMonth() - start.getUTCMonth()
+  if (now.getUTCDate() < start.getUTCDate()) months -= 1
+  months = Math.max(0, months)
+  const years = Math.floor(months / 12)
+  const remainder = months % 12
+  if (years === 0) {
+    const displayMonths = Math.max(1, remainder)
+    return `${displayMonths} month${displayMonths === 1 ? '' : 's'}`
+  }
+  if (remainder === 0) return `${years} year${years === 1 ? '' : 's'}`
+  return `${years}y ${remainder}m`
+}
+
+function OrgNode({ agent, relation }: { agent: Agent; relation: string }) {
+  const tenure = tenureLabel(agent.joinedOn)
+  return (
+    <article
+      className={`org-node org-${agent.id}`}
+      style={{ '--agent-color': agent.color } as CSSProperties}
+      tabIndex={0}
+      aria-label={`${agent.name}, ${agent.role}. ${relation}. Tenure ${tenure}. ${agent.personality} Education: ${agent.education}`}
+    >
+      <div className="org-node-main">
+        <AgentPortrait id={agent.id} name={agent.name} fallback={agent.emoji} className="org-portrait" />
+        <div>
+          <span className="org-relation">{relation}</span>
+          <h3>{agent.name}</h3>
+          <p>{agent.role}</p>
+        </div>
+        <span className={`status ${agent.status}`}><span /> {agent.status}</span>
+      </div>
+      <div className="org-tenure"><strong>{tenure}</strong><span>in company</span></div>
+      <div className="org-tooltip" role="tooltip">
+        <strong>Background</strong>
+        <p>{agent.personality}</p>
+        <strong>Education</strong>
+        <p>{agent.education}</p>
+        <small>Joined {agent.joinedOn ? new Date(`${agent.joinedOn}T12:00:00`).toLocaleDateString([], { month: 'short', year: 'numeric' }) : 'date pending'}</small>
+      </div>
+    </article>
+  )
+}
+
 function contributionText(agentId: string, taskType: TaskType) {
   if (agentId === 'atlas') return 'Scoped the request, assigned the work, reconciled the specialist views, and owned the final response.'
   if (agentId === 'scout') return taskType === 'research'
@@ -718,7 +770,8 @@ function App() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [retrying, setRetrying] = useState<number | null>(null)
-  const [archiving, setArchiving] = useState(false)
+  const [chatAction, setChatAction] = useState<'close' | 'archive' | null>(null)
+  const [deletingArchive, setDeletingArchive] = useState<number | null>(null)
   const [archiveNotice, setArchiveNotice] = useState('')
   const [showScheduleForm, setShowScheduleForm] = useState(false)
   const [scheduleName, setScheduleName] = useState('')
@@ -816,25 +869,45 @@ function App() {
     }
   }
 
-  const startNewChat = async () => {
-    if (visibleCommandMessages.length === 0 || commandBusy || archiving) return
-    setArchiving(true)
+  const finishChat = async (retainArchive: boolean) => {
+    if (visibleCommandMessages.length === 0 || commandBusy || chatAction) return
+    const action = retainArchive ? 'archive' : 'close'
+    setChatAction(action)
     setError('')
     try {
-      const response = await fetch('/api/chat/archive', {
+      const response = await fetch(retainArchive ? '/api/chat/archive' : '/api/chat/close', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ audienceAgentId }),
       })
-      const data = await response.json() as { taskId?: number; error?: string }
-      if (!response.ok || !data.taskId) throw new Error(data.error || 'The conversation could not be archived.')
+      const data = await response.json() as { taskId?: number; retained?: boolean; error?: string }
+      if (!response.ok || !data.taskId) throw new Error(data.error || 'The conversation could not be closed.')
       setTitle('')
-      setArchiveNotice(`${selectedAudience.label} conversation archived as Order #${data.taskId}.`)
+      setArchiveNotice(retainArchive
+        ? `${selectedAudience.label} conversation saved as Archive #${data.taskId}. It will remain until you delete it.`
+        : `${selectedAudience.label} conversation closed as today’s Order #${data.taskId}. It will clear after tonight’s successful distillation.`)
       await refresh(true)
     } catch (archiveError) {
       setError(archiveError instanceof Error ? archiveError.message : 'Something went wrong.')
     } finally {
-      setArchiving(false)
+      setChatAction(null)
+    }
+  }
+
+  const deleteArchive = async (id: number) => {
+    if (deletingArchive !== null || !window.confirm('Delete this saved transcript permanently? Its private memory distillation will still run normally.')) return
+    setDeletingArchive(id)
+    setError('')
+    try {
+      const response = await fetch(`/api/chat/archives/${id}`, { method: 'DELETE' })
+      const data = await response.json() as { error?: string }
+      if (!response.ok) throw new Error(data.error || 'The archive could not be deleted.')
+      setArchiveNotice(`Archive #${id} deleted. The nightly private-memory policy is unchanged.`)
+      await refresh(true)
+    } catch (deleteError) {
+      setError(deleteError instanceof Error ? deleteError.message : 'Something went wrong.')
+    } finally {
+      setDeletingArchive(null)
     }
   }
 
@@ -955,6 +1028,11 @@ function App() {
   const latestSprint = feed.find((entry) => entry.kind === 'sprint')
   const handoffs = feed.filter((entry) => entry.kind !== 'sprint')
   const runnerOnline = Boolean(runner?.online)
+  const vader = agents.find((agent) => agent.id === 'atlas')
+  const directReports = ['scout', 'pixel', 'muse']
+    .map((id) => agents.find((agent) => agent.id === id))
+    .filter((agent): agent is Agent => Boolean(agent))
+  const luke = agents.find((agent) => agent.id === 'luke')
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
   const officeDate = new Intl.DateTimeFormat('en-US', {
@@ -1016,15 +1094,26 @@ function App() {
                 </div>
               </div>
               {visibleCommandMessages.length > 0 && (
-                <button
-                  className="new-chat-button"
-                  type="button"
-                  onClick={() => void startNewChat()}
-                  disabled={commandBusy || archiving}
-                  title={commandBusy ? `Wait for ${selectedAudience.label} to finish the current reply.` : 'Archive this conversation and open a clean one.'}
-                >
-                  <span>＋</span>{archiving ? 'Archiving…' : 'New chat'}
-                </button>
+                <div className="chat-actions">
+                  <button
+                    className="archive-chat-button"
+                    type="button"
+                    onClick={() => void finishChat(true)}
+                    disabled={commandBusy || chatAction !== null}
+                    title={commandBusy ? `Wait for ${selectedAudience.label} to finish the current reply.` : 'Keep this transcript in Orders & intelligence until you delete it.'}
+                  >
+                    <span>▣</span>{chatAction === 'archive' ? 'Saving…' : 'Archive chat'}
+                  </button>
+                  <button
+                    className="new-chat-button"
+                    type="button"
+                    onClick={() => void finishChat(false)}
+                    disabled={commandBusy || chatAction !== null}
+                    title={commandBusy ? `Wait for ${selectedAudience.label} to finish the current reply.` : 'Open a clean chat. Today’s copy clears after successful nightly distillation.'}
+                  >
+                    <span>＋</span>{chatAction === 'close' ? 'Opening…' : 'New chat'}
+                  </button>
+                </div>
               )}
             </div>
 
@@ -1651,6 +1740,7 @@ function App() {
               <div>
                 <p className="section-label">Imperial transmissions</p>
                 <h2 id="tasks-heading">Orders & intelligence</h2>
+                <p className="section-caption">Closed chats stay here for today. Intentional archives remain until you delete them.</p>
               </div>
               <span>{openTaskCount} open</span>
             </div>
@@ -1672,7 +1762,8 @@ function App() {
                         <span>{task.taskType === 'qna' ? 'Q&A' : task.taskType}</span>
                         <span>{task.executionTarget === 'cloud' ? '☁ Cloud' : '⌘ Mac'}</span>
                         <span>{task.modelUsed || (task.executionTarget === 'mac' ? 'Codex' : task.modelMode)}</span>
-                        {task.archiveKey && <span className="archive-task-badge">↗ Archived chat</span>}
+                        {task.archiveKey && task.archiveRetained === 1 && <span className="archive-task-badge">▣ Saved archive</span>}
+                        {task.archiveKey && task.archiveRetained !== 1 && <span className="daily-chat-badge">◷ Today’s chat</span>}
                         {task.scheduleName && <span className="schedule-task-badge">◴ {task.scheduleName}</span>}
                         <span className={`run-status ${task.executionStatus}`}>{statusLabel(task)}</span>
                       </div>
@@ -1680,6 +1771,17 @@ function App() {
                       <p>{task.agentName ? `${task.agentName} · ${new Date(`${task.createdAt}Z`).toLocaleString()}` : 'Waiting for an agent'}</p>
                       {task.collaborators.length > 1 && <div className="task-collaborators">Council: {task.collaborators.map((id) => { const member = agents.find((agent) => agent.id === id); return member ? <AgentPortrait id={id} name={member.name} fallback={member.emoji} className="collaborator-portrait" key={id} /> : null })}</div>}
                     </div>
+                    {task.archiveRetained === 1 && (
+                      <button
+                        className="archive-delete-button"
+                        type="button"
+                        onClick={() => void deleteArchive(task.id)}
+                        disabled={deletingArchive !== null}
+                        title="Permanently remove this saved transcript. Private memory distillation remains unchanged."
+                      >
+                        {deletingArchive === task.id ? 'Deleting…' : 'Delete archive'}
+                      </button>
+                    )}
                   </div>
 
                   {(task.result || task.error) && (
@@ -1724,19 +1826,28 @@ function App() {
               </div>
               <span>{agents.length || 5} agents</span>
             </div>
-            <div className="agent-grid" aria-busy={loading}>
-              {loading && Array.from({ length: 5 }, (_, index) => <div className="agent-card skeleton" key={index} />)}
-              {!loading && agents.map((agent) => (
-                <article className="agent-card" key={agent.id} style={{ '--agent-color': agent.color } as CSSProperties}>
-                  <div className="agent-topline">
-                    <AgentPortrait id={agent.id} name={agent.name} fallback={agent.emoji} className="agent-emoji" />
-                    <span className={`status ${agent.status}`}><span /> {agent.status}</span>
+            <div className="org-chart-panel" aria-busy={loading}>
+              <p className="org-chart-help">Hover a profile—or tap and focus it on mobile—for background, education, and joining history.</p>
+              {loading && <div className="org-chart-skeleton skeleton" />}
+              {!loading && vader && (
+                <div className="org-chart" aria-label="Dark Council reporting structure">
+                  <div className="org-root">
+                    <OrgNode agent={vader} relation="Council manager" />
                   </div>
-                  <h3>{agent.name}</h3>
-                  <p className="agent-role">{agent.role}</p>
-                  <p className="agent-personality">{agent.personality}</p>
-                </article>
-              ))}
+                  <div className="org-direct-reports">
+                    {directReports.map((agent) => (
+                      <div className="org-report" key={agent.id}>
+                        <OrgNode agent={agent} relation="Reports to Vader" />
+                      </div>
+                    ))}
+                  </div>
+                  {luke && (
+                    <div className="org-intern-branch">
+                      <OrgNode agent={luke} relation="Reports to Palpatine" />
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </section>
 

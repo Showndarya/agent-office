@@ -43,7 +43,11 @@ The default sender is Resend's onboarding address, which is suitable for initial
 
 ## Command Console archives
 
-Every audience thread has an explicit **New chat** action. It is available after that thread's current reply finishes. Closing a chat creates one completed, Markdown-friendly transcript in **Orders & intelligence**, led by the actual answering agent and including its models, sources, and visible council contributors, then opens an empty thread. Other audiences remain untouched. The original daily message rows remain hidden but eligible for that night’s memory distillation; they are deleted only after successful consolidation. The archived copy in **Orders & intelligence** is a retained task-history record and is intentionally not removed by the raw-chat midnight cleanup.
+Every audience thread has separate **New chat** and **Archive chat** actions after its current reply finishes. New chat closes only that audience, opens an empty thread, and keeps a Markdown-friendly transcript in **Orders & intelligence** for the rest of the day. After successful nightly memory distillation, that same-day transcript and its raw message rows are deleted. Archive chat performs the same close-and-distill flow but keeps the readable transcript until the user chooses **Delete archive**. Deleting an archive removes the transcript without removing knowledge already consolidated into the private profile. Other audience threads remain untouched.
+
+## Dark Council organization
+
+The team view is a responsive organization chart rather than a flat card grid. Vader manages Fett, Tarkin, and Palpatine; Palpatine manages Luke. Each profile shows live status, role, and calculated company tenure. Hovering the profile—or focusing it on a touch device—reveals the agent’s working description, themed educational background, and joining history. These fields live with the agent record in D1 so the hierarchy remains explicit and maintainable.
 
 ## Imperial Comms Board
 
@@ -117,7 +121,9 @@ Ordinary build tasks never deploy or publish. The only automated deployment path
 - `GET|PUT /api/settings`
 - `GET /api/chat`
 - `POST /api/chat/messages`
+- `POST /api/chat/close`
 - `POST /api/chat/archive`
+- `DELETE /api/chat/archives/:id`
 - `GET /api/workshop`
 - `POST /api/workshop/proposals/:id/action`
 - `POST /api/tasks` with `{ "title": "...", "taskType": "qna|research|build", "modelMode": "auto|fast|smart|deep" }`

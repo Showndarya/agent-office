@@ -110,6 +110,7 @@ const taskSelect = `SELECT
   tasks.schedule_id AS scheduleId,
   tasks.schedule_run_key AS scheduleRunKey,
   tasks.archive_key AS archiveKey,
+  tasks.archive_retained AS archiveRetained,
   tasks.team_agents AS teamAgents,
   tasks.collaborators,
   tasks.allow_recruits AS allowRecruits,
@@ -343,7 +344,9 @@ async function recordCompletion(
 async function listAgents(env: Env) {
   const { results } = await env.agent_office_db
     .prepare(
-      `SELECT id, name, role, personality, emoji, color, status
+      `SELECT id, name, role, personality, emoji, color, status,
+        manager_agent_id AS managerAgentId,
+        joined_on AS joinedOn, education
        FROM agents
        ORDER BY CASE id
          WHEN 'atlas' THEN 1 WHEN 'scout' THEN 2 WHEN 'pixel' THEN 3 WHEN 'muse' THEN 4 WHEN 'luke' THEN 5 ELSE 6
@@ -1112,7 +1115,7 @@ async function listCommandChat(env: Env) {
       sources: parseSources(message.sources),
       collaborators: parseAgentIds(message.collaborators),
     })),
-    retention: "Close finished chats into Orders & intelligence; the raw daily copy is distilled into shared memory, then cleared after midnight ET",
+    retention: "New chat keeps a same-day copy in Orders & intelligence; nightly distillation clears it. Archive chat keeps an intentional copy until you delete it.",
   });
 }
 
@@ -1132,7 +1135,7 @@ function quotedMarkdown(content: string) {
     .join("\n");
 }
 
-async function archiveCommandChat(request: Request, env: Env) {
+async function closeCommandChat(request: Request, env: Env, retainArchive: boolean) {
   let audienceAgentId: AgentId = "atlas";
   try {
     const body = await request.json<{ audienceAgentId?: unknown }>();
@@ -1154,7 +1157,7 @@ async function archiveCommandChat(request: Request, env: Env) {
     .all<Record<string, unknown>>();
   const userRows = rows.filter((row) => row.role === "user");
   if (userRows.length === 0) {
-    return json({ error: `There is no active conversation with ${agentNames[audienceAgentId]} to archive yet.` }, { status: 400 });
+    return json({ error: `There is no active conversation with ${agentNames[audienceAgentId]} to close yet.` }, { status: 400 });
   }
   if (rows.some((row) => row.status === "queued" || row.status === "running")) {
     return json({ error: `Wait for ${agentNames[audienceAgentId]} to finish the current reply before starting a new chat.` }, { status: 409 });
@@ -1176,7 +1179,7 @@ async function archiveCommandChat(request: Request, env: Env) {
   const models = [...new Set(rows
     .map((row) => typeof row.modelUsed === "string" ? row.modelUsed.trim() : "")
     .filter(Boolean))];
-  const modelUsed = models.length === 1 ? models[0] : models.length > 1 ? `${models.length} models` : "Conversation archive";
+  const modelUsed = models.length === 1 ? models[0] : models.length > 1 ? `${models.length} models` : "Conversation record";
   const collaborators = [...new Set<AgentId>([
     audienceAgentId,
     ...rows
@@ -1203,10 +1206,14 @@ async function archiveCommandChat(request: Request, env: Env) {
       : "_No written response was returned._";
     return `## ${agentName}${details ? ` · ${details}` : ""}\n\n${content || error}`;
   }).join("\n\n---\n\n");
-  const result = `# Archived command conversation\n\n_${userRows.length} exchange${userRows.length === 1 ? "" : "s"} closed on ${dayKey}. The raw daily copy remains available to tonight’s private memory consolidation._\n\n${transcript}`;
+  const result = `# ${retainArchive ? "Archived" : "Closed"} command conversation\n\n_${userRows.length} exchange${userRows.length === 1 ? "" : "s"} closed on ${dayKey}. The raw daily copy remains available to tonight’s private memory consolidation._\n\n${transcript}`;
   const audienceLabel = audienceAgentId === "atlas" ? "routed command thread" : `private audience with ${agentNames[audienceAgentId]}`;
-  const description = `${userRows.length} completed ${audienceLabel} exchange${userRows.length === 1 ? "" : "s"}, intentionally closed and archived.`;
-  const routeReason = `Archived from the ${audienceLabel}. Its raw daily copy remains eligible for tonight’s memory distillation, then follows the normal deletion rule.`;
+  const description = retainArchive
+    ? `${userRows.length} completed ${audienceLabel} exchange${userRows.length === 1 ? "" : "s"}, intentionally archived.`
+    : `${userRows.length} completed ${audienceLabel} exchange${userRows.length === 1 ? "" : "s"}. This same-day copy clears after successful nightly distillation.`;
+  const routeReason = retainArchive
+    ? `Intentionally archived from the ${audienceLabel}. The transcript stays until manually deleted; its raw daily copy still follows nightly memory distillation.`
+    : `Closed from the ${audienceLabel}. The same-day transcript remains visible until successful nightly memory distillation, then clears automatically.`;
 
   await env.agent_office_db.batch([
     env.agent_office_db
@@ -1215,10 +1222,11 @@ async function archiveCommandChat(request: Request, env: Env) {
           (title, description, status, agent_id, task_type,
            execution_target, execution_status, result, error, sources,
            model_mode, model_used, route_reason, started_at, completed_at,
-           updated_at, team_agents, collaborators, allow_recruits, archive_key)
+           updated_at, team_agents, collaborators, allow_recruits, archive_key,
+           archive_retained)
          VALUES (?, ?, 'done', ?, ?, 'cloud', 'complete', ?, NULL, ?,
            ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
-           ?, ?, 0, ?)`,
+           ?, ?, 0, ?, ?)`,
       )
       .bind(
         title,
@@ -1233,6 +1241,7 @@ async function archiveCommandChat(request: Request, env: Env) {
         JSON.stringify(collaborators),
         JSON.stringify(collaborators),
         archiveKey,
+        retainArchive ? 1 : 0,
       ),
     env.agent_office_db
       .prepare(
@@ -1248,8 +1257,25 @@ async function archiveCommandChat(request: Request, env: Env) {
     .prepare("SELECT id FROM tasks WHERE archive_key = ?")
     .bind(archiveKey)
     .first<{ id: number }>();
-  if (!archive) return json({ error: "The conversation could not be archived." }, { status: 500 });
-  return json({ taskId: archive.id, title }, { status: 201 });
+  if (!archive) return json({ error: "The conversation could not be closed." }, { status: 500 });
+  return json({ taskId: archive.id, title, retained: retainArchive }, { status: 201 });
+}
+
+async function deleteChatArchive(id: number, env: Env) {
+  const archive = await env.agent_office_db
+    .prepare(
+      `SELECT id FROM tasks
+       WHERE id = ? AND archive_retained = 1
+         AND archive_key LIKE 'command-chat:%'`,
+    )
+    .bind(id)
+    .first<{ id: number }>();
+  if (!archive) return json({ error: "That saved chat archive was not found." }, { status: 404 });
+  await env.agent_office_db
+    .prepare("DELETE FROM tasks WHERE id = ?")
+    .bind(id)
+    .run();
+  return json({ deleted: true, id });
 }
 
 async function createCommandChat(request: Request, env: Env, ctx: ExecutionContext) {
@@ -3515,10 +3541,17 @@ async function distillPastChat(env: Env, date = new Date()) {
       .all<Record<string, unknown>>(),
   ]);
   if (!messages.some((message) => message.role === "user")) {
-    await env.agent_office_db
-      .prepare("DELETE FROM command_chat_messages WHERE day_key = ?")
-      .bind(oldest.dayKey)
-      .run();
+    await env.agent_office_db.batch([
+      env.agent_office_db
+        .prepare(
+          `DELETE FROM tasks
+           WHERE archive_retained = 0 AND archive_key LIKE ?`,
+        )
+        .bind(`command-chat:${oldest.dayKey}:%`),
+      env.agent_office_db
+        .prepare("DELETE FROM command_chat_messages WHERE day_key = ?")
+        .bind(oldest.dayKey),
+    ]);
     return { distilled: true, dayKey: oldest.dayKey, observations: 0 };
   }
 
@@ -3746,6 +3779,12 @@ async function distillPastChat(env: Env, date = new Date()) {
       console.warn("Knowledge graph saved; vector sync will retry", error);
     }
     await env.agent_office_db.batch([
+      env.agent_office_db
+        .prepare(
+          `DELETE FROM tasks
+           WHERE archive_retained = 0 AND archive_key LIKE ?`,
+        )
+        .bind(`command-chat:${oldest.dayKey}:%`),
       env.agent_office_db
         .prepare("DELETE FROM command_chat_messages WHERE day_key = ?")
         .bind(oldest.dayKey),
@@ -4436,8 +4475,15 @@ export default {
       if (pathname === "/api/chat/messages" && request.method === "POST") {
         return createCommandChat(request, env, ctx);
       }
+      if (pathname === "/api/chat/close" && request.method === "POST") {
+        return closeCommandChat(request, env, false);
+      }
       if (pathname === "/api/chat/archive" && request.method === "POST") {
-        return archiveCommandChat(request, env);
+        return closeCommandChat(request, env, true);
+      }
+      const deleteArchiveMatch = pathname.match(/^\/api\/chat\/archives\/(\d+)$/);
+      if (deleteArchiveMatch && request.method === "DELETE") {
+        return deleteChatArchive(Number(deleteArchiveMatch[1]), env);
       }
       if (pathname === "/api/status" && request.method === "GET") return officeStatus(env);
       if (pathname === "/api/workshop" && request.method === "GET") return listWorkshop(env);
