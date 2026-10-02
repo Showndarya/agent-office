@@ -43,7 +43,7 @@ The default sender is Resend's onboarding address, which is suitable for initial
 
 ## Command Console archives
 
-Every audience thread has an explicit **New chat** action. It is available after that thread's current reply finishes. Closing a chat creates one completed, Markdown-friendly transcript in **Orders & intelligence**, led by the actual answering agent and including its models, sources, and visible council contributors, then opens an empty thread. Other audiences remain untouched. The original daily rows remain hidden but eligible for that night’s memory distillation; they are deleted only after successful consolidation. Archived task transcripts follow the task-history retention policy instead of the raw-chat midnight cleanup.
+Every audience thread has an explicit **New chat** action. It is available after that thread's current reply finishes. Closing a chat creates one completed, Markdown-friendly transcript in **Orders & intelligence**, led by the actual answering agent and including its models, sources, and visible council contributors, then opens an empty thread. Other audiences remain untouched. The original daily message rows remain hidden but eligible for that night’s memory distillation; they are deleted only after successful consolidation. The archived copy in **Orders & intelligence** is a retained task-history record and is intentionally not removed by the raw-chat midnight cleanup.
 
 ## Imperial Comms Board
 
@@ -55,7 +55,7 @@ On the first Cron tick of each Eastern calendar day, the prior day's watercooler
 
 Vader conducts one compact sprint review per day at 9:00 AM Eastern. A once-per-minute Cloudflare Cron Trigger handles task recovery, due schedules, natural chat timing, and daily cleanup. D1 keys prevent duplicate chat slots and guarantee one GPT-6 Luna sprint per day. Local-time guards handle daylight-saving time. If either model is unavailable, deterministic copy is stored instead.
 
-Vader also runs a no-token weekday leadership cadence that rotates through 1:1s with Fett, Tarkin, and Palpatine, evidence-to-architecture training, morale checks, and team-building practice. Every 14 days, deterministic code turns real assignment, completion, failure, and handoff metrics into a Commander-facing development review. It gives each specialist a coaching focus and next-cycle responsibility and records Vader's own workload, training, recognition, morale, and 1:1 commitments. It cannot invent evidence, adds no model cost, and treats low assignment volume as a workload signal rather than weak performance.
+The no-token weekday leadership cadence follows the reporting chain: Vader holds 1:1s with Fett, Tarkin, and Palpatine; Palpatine holds Luke's 1:1; and Palpatine's next manager sync with Vader includes a concise update on Luke's current proposal, response to feedback, tests, blockers, workload, and next development step. Evidence-to-architecture training, morale checks, and team-building practice remain in the rotation. Every 14 days, deterministic code turns real assignment, completion, failure, and handoff metrics for Vader's three direct reports into a Commander-facing development review. It cannot invent evidence, adds no model cost, and treats low assignment volume as a workload signal rather than weak performance.
 
 ## Luke’s Workshop
 

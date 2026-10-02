@@ -429,9 +429,11 @@ async function listFeed(env: Env) {
       .prepare(
         `SELECT e.id, e.kind, e.title, e.message, e.day_key AS dayKey,
           e.created_at AS createdAt, a.id AS agentId, a.name AS agentName,
-          a.emoji AS agentEmoji
+          a.emoji AS agentEmoji, leader.id AS leaderAgentId,
+          leader.name AS leaderAgentName, leader.emoji AS leaderAgentEmoji
          FROM leadership_events e
          LEFT JOIN agents a ON a.id = e.agent_id
+         LEFT JOIN agents leader ON leader.id = e.leader_agent_id
          ORDER BY e.created_at DESC, e.id DESC LIMIT 8`,
       )
       .all(),
@@ -4097,48 +4099,91 @@ const performanceRoles: Record<AgentId, string> = {
 };
 
 const leadershipRotation: Array<{
+  key: string;
   kind: "one_on_one" | "training" | "morale" | "team_building";
+  leaderId: AgentId;
   agentId: AgentId | null;
   title: string;
   message: string;
 }> = [
   {
+    key: "vader-fett",
     kind: "one_on_one",
+    leaderId: "atlas",
     agentId: "scout",
     title: "1:1 · Vader with Fett",
     message: "Reviewed research load, source quality, and where Tarkin can remove rework. One skill goal and one workload concern move into the next cycle.",
   },
   {
+    key: "evidence-architecture-training",
     kind: "training",
+    leaderId: "atlas",
     agentId: "pixel",
     title: "Team training · Evidence into architecture",
     message: "Tarkin leads a short clinic on turning Fett's source pack into assumptions, constraints, comparisons, and an implementable design.",
   },
   {
+    key: "vader-tarkin",
     kind: "one_on_one",
+    leaderId: "atlas",
     agentId: "pixel",
     title: "1:1 · Vader with Tarkin",
     message: "Reviewed architecture load, research depth, and delegation. The goal is senior judgment without becoming the only person allowed near a diagram.",
   },
   {
+    key: "palpatine-luke",
+    kind: "one_on_one",
+    leaderId: "muse",
+    agentId: "luke",
+    title: "1:1 · Palpatine with Luke",
+    message: "Reviewed Luke's current idea, feedback response, test discipline, workload, and one skill to practice before the next rotation. Curiosity remains welcome; production authority remains elsewhere.",
+  },
+  {
+    key: "morale-pulse",
     kind: "morale",
+    leaderId: "atlas",
     agentId: null,
     title: "Morale pulse · Workload and recognition",
     message: "Vader checks workload, recent friction, and who deserves explicit credit. Any overloaded specialist gets a smaller next assignment or a partner.",
   },
   {
+    key: "vader-palpatine",
     kind: "one_on_one",
+    leaderId: "atlas",
     agentId: "muse",
     title: "1:1 · Vader with Palpatine",
-    message: "Reviewed mentoring impact, strategic challenge, and implementation follow-through. Experience should raise the team, not quietly collect every decision.",
+    message: "Reviewed Palpatine's strategy and mentoring impact, including his concise manager update on Luke's progress, feedback response, tests, blockers, and next development step. Vader manages Palpatine; Palpatine manages Luke.",
   },
   {
+    key: "better-disagreement",
     kind: "team_building",
+    leaderId: "atlas",
     agentId: null,
     title: "Team practice · Better disagreement",
     message: "The council rehearses one clean challenge each: evidence, architecture, strategy, and leadership. The objective is useful dissent without theatrical meetings.",
   },
 ];
+
+async function leadershipEventMessage(env: Env, plan: (typeof leadershipRotation)[number]) {
+  if (plan.key !== "palpatine-luke" && plan.key !== "vader-palpatine") return plan.message;
+  const latest = await env.agent_office_db
+    .prepare(
+      `SELECT title, status, manager_decision AS managerDecision,
+        manager_review AS managerReview, updated_at AS updatedAt
+       FROM improvement_proposals
+       ORDER BY updated_at DESC, id DESC LIMIT 1`,
+    )
+    .first<Record<string, unknown>>();
+  if (!latest) return plan.message;
+  const title = shortSubject(latest.title);
+  const status = String(latest.status ?? "proposed").replaceAll("_", " ");
+  const decision = latest.managerDecision === "revised" ? "revised and cleared" : "approved";
+  const review = cleanProposalText(latest.managerReview, "The scope remains bounded and testable.", 220);
+  if (plan.key === "palpatine-luke") {
+    return `Reviewed “${title}”, currently ${status}. Palpatine ${decision} the scope, discussed Luke's response to feedback and test discipline, and set one next skill goal. ${review}`;
+  }
+  return `Palpatine reported “${title}” as ${status}: ${review} Vader reviewed Palpatine's coaching, workload judgment, and escalation discipline; Palpatine remains Luke's manager.`;
+}
 
 async function runLeadershipCadence(env: Env, date = new Date(), force = false) {
   const { dayKey, hour } = easternClock(date);
@@ -4160,15 +4205,16 @@ async function runLeadershipCadence(env: Env, date = new Date(), force = false) 
 
   const dayNumber = Math.floor(Date.parse(`${dayKey}T12:00:00Z`) / 86_400_000);
   const plan = leadershipRotation[Math.abs(dayNumber) % leadershipRotation.length];
-  const eventKey = `${dayKey}:${plan.kind}:${plan.agentId ?? "team"}`;
+  const message = await leadershipEventMessage(env, plan);
+  const eventKey = `${dayKey}:${plan.key}:${plan.leaderId}:${plan.agentId ?? "team"}`;
   const inserted = await env.agent_office_db
     .prepare(
       `INSERT OR IGNORE INTO leadership_events
-        (event_key, kind, agent_id, title, message, day_key)
-       VALUES (?, ?, ?, ?, ?, ?)
+        (event_key, kind, leader_agent_id, agent_id, title, message, day_key)
+       VALUES (?, ?, ?, ?, ?, ?, ?)
        RETURNING id`,
     )
-    .bind(eventKey, plan.kind, plan.agentId, plan.title, plan.message, dayKey)
+    .bind(eventKey, plan.kind, plan.leaderId, plan.agentId, plan.title, message, dayKey)
     .first<{ id: number }>();
   if (!inserted) return { generated: false, reason: "Leadership action already exists." };
 
@@ -4177,9 +4223,9 @@ async function runLeadershipCadence(env: Env, date = new Date(), force = false) 
       .prepare(
         `UPDATE agent_social_state
          SET mood = 'attentive', activity = ?, last_topic = ?, updated_at = CURRENT_TIMESTAMP
-         WHERE agent_id = 'atlas'`,
+         WHERE agent_id = ?`,
       )
-      .bind(plan.title.toLowerCase(), plan.title),
+      .bind(plan.title.toLowerCase(), plan.title, plan.leaderId),
   ];
   if (plan.agentId) {
     stateStatements.push(
@@ -4189,12 +4235,12 @@ async function runLeadershipCadence(env: Env, date = new Date(), force = false) 
            SET mood = 'supported', activity = ?, last_topic = ?, updated_at = CURRENT_TIMESTAMP
            WHERE agent_id = ?`,
         )
-        .bind(plan.kind === "one_on_one" ? "in a 1:1 with Vader" : "sharing expertise with the team", plan.title, plan.agentId),
+        .bind(plan.kind === "one_on_one" ? `in a 1:1 with ${agentNames[plan.leaderId]}` : "sharing expertise with the team", plan.title, plan.agentId),
     );
-    await touchBond(env, "atlas", plan.agentId, false);
+    await touchBond(env, plan.leaderId, plan.agentId, false);
   }
   await env.agent_office_db.batch(stateStatements);
-  return { generated: true, event: plan };
+  return { generated: true, event: { ...plan, message } };
 }
 
 async function collectPerformanceMetrics(env: Env) {

@@ -209,6 +209,9 @@ type LeadershipEvent = {
   agentId: string | null
   agentName: string | null
   agentEmoji: string | null
+  leaderAgentId: string | null
+  leaderAgentName: string | null
+  leaderAgentEmoji: string | null
 }
 
 type PerformanceMetric = {
@@ -1501,7 +1504,7 @@ function App() {
                 <div className="sprint-topline">
                   <AgentPortrait id="atlas" name="Darth Vader" className="comms-avatar vader" />
                   <div>
-                    <p className="section-label">Vader's leadership desk</p>
+                    <p className="section-label">Leadership chain</p>
                     <h3>People, training & morale</h3>
                   </div>
                   <span className="live-chip">Weekdays</span>
@@ -1510,10 +1513,13 @@ function App() {
                   {leadershipEvents.length === 0 && <p className="quiet-feed">The first leadership action is being scheduled.</p>}
                   {leadershipEvents.slice(0, 5).map((event) => (
                     <div className="leadership-event" key={event.id}>
-                      {event.agentId
-                        ? <AgentPortrait id={event.agentId} name={event.agentName || 'Council member'} fallback={event.agentEmoji || '○'} className="leadership-portrait" />
-                        : <span className="leadership-team-mark">◎</span>}
-                      <div>
+                      <div className="leadership-chain">
+                        <AgentPortrait id={event.leaderAgentId || 'atlas'} name={event.leaderAgentName || 'Darth Vader'} fallback={event.leaderAgentEmoji || '◉'} className="leadership-portrait" />
+                        {event.agentId
+                          ? <AgentPortrait id={event.agentId} name={event.agentName || 'Council member'} fallback={event.agentEmoji || '○'} className="leadership-portrait" />
+                          : <span className="leadership-team-mark">◎</span>}
+                      </div>
+                      <div className="leadership-event-copy">
                         <span>{event.kind.replaceAll('_', ' ')}</span>
                         <strong>{event.title}</strong>
                         <MarkdownContent value={event.message} />
@@ -1521,7 +1527,7 @@ function App() {
                     </div>
                   ))}
                 </div>
-                <p className="cost-note">Rotating 1:1s, team training, morale checks, and team-building are scheduled from code and add no model cost.</p>
+                <p className="cost-note">Vader manages Fett, Tarkin, and Palpatine. Palpatine manages Luke and reports his development upward. The rotating 1:1s and manager syncs add no model cost.</p>
               </article>
 
               <article className="performance-card">
