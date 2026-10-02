@@ -13,7 +13,27 @@
 	"observability": {
 		"enabled": true
 	},
-	"upload_source_maps": true
+	"upload_source_maps": true,
+	"ai": {
+		"binding": "AI"
+	},
+	"vectorize": [
+		{
+			"binding": "MEMORY_INDEX",
+			"index_name": "agent-office-memory"
+		}
+	],
+	"triggers": {
+		"crons": ["* * * * *"]
+	},
+	"d1_databases": [
+		{
+			"binding": "agent_office_db",
+			"database_name": "agent-office-db",
+			"database_id": "00000000-0000-0000-0000-000000000000",
+			"remote": true
+		}
+	]
 	/**
 	 * Smart Placement
 	 * https://developers.cloudflare.com/workers/configuration/smart-placement/#smart-placement

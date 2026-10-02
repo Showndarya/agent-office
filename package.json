@@ -5,10 +5,13 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "dev:local": "CLOUDFLARE_VITE_FORCE_LOCAL=true vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
     "preview": "npm run build && vite preview",
     "deploy": "npm run build && wrangler deploy",
+    "db:migrate:local": "wrangler d1 migrations apply agent-office-db --local",
+    "db:migrate:remote": "wrangler d1 migrations apply agent-office-db --remote",
     "cf-typegen": "wrangler types"
   },
   "dependencies": {
