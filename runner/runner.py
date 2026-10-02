@@ -17,6 +17,26 @@ from pathlib import Path
 from typing import Any
 
 
+def load_env_file(path: Path) -> None:
+    """Load the local runner configuration without a third-party dependency."""
+    if not path.is_file():
+        return
+    for raw_line in path.read_text(encoding="utf-8").splitlines():
+        line = raw_line.strip()
+        if not line or line.startswith("#") or "=" not in line:
+            continue
+        key, value = line.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        if len(value) >= 2 and value[0] == value[-1] and value[0] in {"'", '"'}:
+            value = value[1:-1]
+        if key:
+            os.environ.setdefault(key, value)
+
+
+load_env_file(Path(__file__).with_name(".env"))
+
+
 BASE_URL = os.environ.get("AGENT_OFFICE_URL", "").rstrip("/")
 RUNNER_TOKEN = os.environ.get("AGENT_OFFICE_RUNNER_TOKEN", "")
 ACCESS_ID = os.environ.get("CF_ACCESS_CLIENT_ID", "")

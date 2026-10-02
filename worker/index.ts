@@ -6,6 +6,7 @@ type Env = {
   RESEND_API_KEY?: string;
   NOTIFY_FROM_EMAIL?: string;
   APP_URL?: string;
+  AI_GATEWAY_ID?: string;
 };
 
 type TaskType = "qna" | "research" | "build";
@@ -642,7 +643,7 @@ async function runLukeRotation(env: Env, date = new Date(), force = false) {
         },
       }, {
         gateway: {
-          id: "agent-office",
+          id: env.AI_GATEWAY_ID?.trim() || "agent-office",
           collectLog: false,
           metadata: { taskType: "luke-workshop-plan", route: "sol" },
         },
@@ -700,7 +701,7 @@ async function runLukeRotation(env: Env, date = new Date(), force = false) {
         },
       }, {
         gateway: {
-          id: "agent-office",
+          id: env.AI_GATEWAY_ID?.trim() || "agent-office",
           collectLog: false,
           metadata: { taskType: "luke-manager-review", route: "sol" },
         },
@@ -2110,7 +2111,7 @@ async function runOpenAi(
 
   return ai.run(route.model, input, {
     gateway: {
-      id: "agent-office",
+      id: env.AI_GATEWAY_ID?.trim() || "agent-office",
       collectLog: false,
       metadata: { taskType, route: route.mode },
     },
@@ -4437,7 +4438,7 @@ async function runDailySprint(env: Env, date = new Date(), force = false) {
       },
       {
         gateway: {
-          id: "agent-office",
+          id: env.AI_GATEWAY_ID?.trim() || "agent-office",
           collectLog: false,
           metadata: { taskType: "daily-sprint", route: "luna" },
         },
