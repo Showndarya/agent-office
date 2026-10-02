@@ -1029,10 +1029,9 @@ function App() {
   const handoffs = feed.filter((entry) => entry.kind !== 'sprint')
   const runnerOnline = Boolean(runner?.online)
   const vader = agents.find((agent) => agent.id === 'atlas')
-  const directReports = ['scout', 'pixel', 'muse']
-    .map((id) => agents.find((agent) => agent.id === id))
+  const directReports = ['pixel', 'muse']
+    .map((id) => agents.find((agent) => agent.id === id && agent.managerAgentId === 'atlas'))
     .filter((agent): agent is Agent => Boolean(agent))
-  const luke = agents.find((agent) => agent.id === 'luke')
   const hour = new Date().getHours()
   const greeting = hour < 12 ? 'Good morning' : hour < 18 ? 'Good afternoon' : 'Good evening'
   const officeDate = new Intl.DateTimeFormat('en-US', {
@@ -1616,7 +1615,7 @@ function App() {
                     </div>
                   ))}
                 </div>
-                <p className="cost-note">Vader manages Fett, Tarkin, and Palpatine. Palpatine manages Luke and reports his development upward. The rotating 1:1s and manager syncs add no model cost.</p>
+                <p className="cost-note">Vader manages Tarkin and Palpatine. Tarkin manages Fett; Palpatine manages Luke. Each senior reports both their specialist’s development and their own work upward. The rotating 1:1s and manager syncs add no model cost.</p>
               </article>
 
               <article className="performance-card">
@@ -1841,11 +1840,21 @@ function App() {
                       </div>
                     ))}
                   </div>
-                  {luke && (
-                    <div className="org-intern-branch">
-                      <OrgNode agent={luke} relation="Reports to Palpatine" />
-                    </div>
-                  )}
+                  <div className="org-secondary-reports">
+                    {directReports.map((manager) => (
+                      <div className="org-secondary-branch" key={manager.id}>
+                        {agents
+                          .filter((agent) => agent.managerAgentId === manager.id)
+                          .map((agent) => (
+                            <OrgNode
+                              agent={agent}
+                              relation={`Reports to ${manager.id === 'pixel' ? 'Tarkin' : 'Palpatine'}`}
+                              key={agent.id}
+                            />
+                          ))}
+                      </div>
+                    ))}
+                  </div>
                 </div>
               )}
             </div>

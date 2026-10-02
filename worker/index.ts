@@ -4132,7 +4132,7 @@ type PerformanceMetric = {
 const performanceRoles: Record<AgentId, string> = {
   atlas: "Team lead and people manager",
   scout: "Field researcher",
-  pixel: "Senior researcher and systems architect",
+  pixel: "Senior researcher, systems architect, and Fett's manager",
   muse: "Senior strategist, implementor, and mentor",
   luke: "Rotating software intern",
 };
@@ -4146,18 +4146,18 @@ const leadershipRotation: Array<{
   message: string;
 }> = [
   {
-    key: "vader-fett",
+    key: "tarkin-fett",
     kind: "one_on_one",
-    leaderId: "atlas",
+    leaderId: "pixel",
     agentId: "scout",
-    title: "1:1 · Vader with Fett",
-    message: "Reviewed research load, source quality, and where Tarkin can remove rework. One skill goal and one workload concern move into the next cycle.",
+    title: "1:1 · Tarkin with Fett",
+    message: "Reviewed Fett's research load, source quality, field judgment, and where earlier architecture guidance can remove rework. One skill goal and one workload concern move into Tarkin's next manager update to Vader.",
   },
   {
     key: "evidence-architecture-training",
     kind: "training",
-    leaderId: "atlas",
-    agentId: "pixel",
+    leaderId: "pixel",
+    agentId: null,
     title: "Team training · Evidence into architecture",
     message: "Tarkin leads a short clinic on turning Fett's source pack into assumptions, constraints, comparisons, and an implementable design.",
   },
@@ -4167,7 +4167,7 @@ const leadershipRotation: Array<{
     leaderId: "atlas",
     agentId: "pixel",
     title: "1:1 · Vader with Tarkin",
-    message: "Reviewed architecture load, research depth, and delegation. The goal is senior judgment without becoming the only person allowed near a diagram.",
+    message: "Tarkin reported his own architecture load, research depth, and delegation decisions alongside Fett's progress, workload, evidence quality, and next development step. Vader reviewed both levels without turning the meeting into a tribunal.",
   },
   {
     key: "palpatine-luke",
@@ -4204,6 +4204,18 @@ const leadershipRotation: Array<{
 ];
 
 async function leadershipEventMessage(env: Env, plan: (typeof leadershipRotation)[number]) {
+  if (plan.key === "tarkin-fett" || plan.key === "vader-tarkin") {
+    const metrics = await collectPerformanceMetrics(env);
+    const fett = metrics.find((metric) => metric.agentId === "scout");
+    const tarkin = metrics.find((metric) => metric.agentId === "pixel");
+    const status = (metric: PerformanceMetric | undefined) => metric && metric.assignments > 0
+      ? `${metric.completed}/${metric.assignments} missions complete, ${metric.failed} failed, ${metric.handoffsGiven} returns given and ${metric.handoffsReceived} received in the last 14 days`
+      : "no attributed missions in the last 14 days—an allocation signal, not a performance mark";
+    if (plan.key === "tarkin-fett") {
+      return `Tarkin reviewed Fett's bounded-research discipline, evidence quality, workload, and next skill goal. Fett has ${status(fett)}. The useful points move upward in Tarkin's next manager sync with Vader.`;
+    }
+    return `Tarkin reported both layers: his own architecture and management work shows ${status(tarkin)}; Fett's field-research update shows ${status(fett)}. Vader reviewed Tarkin's delegation, Fett's development, current blockers, and the next action for each.`;
+  }
   if (plan.key !== "palpatine-luke" && plan.key !== "vader-palpatine") return plan.message;
   const latest = await env.agent_office_db
     .prepare(
@@ -4342,10 +4354,10 @@ function fallbackPerformanceReport(metrics: PerformanceMetric[]) {
     : `No missions were attributed in this review window. That is a workload-allocation signal, not a performance rating.`;
   return [
     "### Fortnightly Council Review",
-    `#### Boba Fett — Field Research\n${snapshot(metrics[0])}\n\n**Development focus:** Keep research bounded, document the source trail, and bring Tarkin in before the evidence pack hardens.\n\n**Next cycle:** Co-own every Research brief with Tarkin.`,
-    `#### Grand Moff Tarkin — Senior Research & Architecture\n${snapshot(metrics[1])}\n\n**Development focus:** Make validation and architecture visible early without becoming a bottleneck.\n\n**Next cycle:** Co-own Research structure and lead one evidence-to-architecture practice.`,
+    `#### Boba Fett — Field Research\n${snapshot(metrics[0])}\n\n**Development focus:** Keep research bounded, document the source trail, and raise weak evidence early in the 1:1 with Tarkin.\n\n**Next cycle:** Co-own every Research brief with Tarkin and return one explicit skill goal.`,
+    `#### Grand Moff Tarkin — Senior Research, Architecture & Fett Management\n${snapshot(metrics[1])}\n\n**Development focus:** Make validation and architecture visible early, coach Fett without becoming a bottleneck, and report both levels clearly to Vader.\n\n**Next cycle:** Lead Fett's 1:1, co-own Research structure, and carry both updates into the Vader sync.`,
     `#### Emperor Palpatine — Strategy, Implementation & Mentoring\n${snapshot(metrics[2])}\n\n**Development focus:** Turn experience into visible guidance while leaving ownership with Fett and Tarkin.\n\n**Next cycle:** Review strategic or implementation-heavy work and hold one mentoring check-in.`,
-    "#### Vader’s Leadership Commitment\nRebalance overloaded work, hold the rotating 1:1s, schedule training and morale checks, recognize useful collaboration, and review the evidence again in 14 days. The purpose is development, not ranking.",
+    "#### Vader’s Leadership Commitment\nHold Tarkin and Palpatine accountable for their own work and their direct reports, rebalance overloaded work, schedule training and morale checks, recognize useful collaboration, and review the evidence again in 14 days. The purpose is development, not ranking.",
   ].join("\n\n");
 }
 

@@ -47,7 +47,7 @@ Every audience thread has separate **New chat** and **Archive chat** actions aft
 
 ## Dark Council organization
 
-The team view is a responsive organization chart rather than a flat card grid. Vader manages Fett, Tarkin, and Palpatine; Palpatine manages Luke. Each profile shows live status, role, and calculated company tenure. Hovering the profile—or focusing it on a touch device—reveals the agent’s working description, themed educational background, and joining history. These fields live with the agent record in D1 so the hierarchy remains explicit and maintainable.
+The team view is a responsive organization chart rather than a flat card grid. Vader manages Tarkin and Palpatine; Tarkin manages Fett; Palpatine manages Luke. Each profile shows live status, role, and calculated company tenure. Hovering the profile—or focusing it on a touch device—reveals the agent’s working description, themed educational background, and joining history. These fields live with the agent record in D1 so the hierarchy remains explicit and maintainable.
 
 ## Imperial Comms Board
 
@@ -59,7 +59,7 @@ On the first Cron tick of each Eastern calendar day, the prior day's watercooler
 
 Vader conducts one compact sprint review per day at 9:00 AM Eastern. A once-per-minute Cloudflare Cron Trigger handles task recovery, due schedules, natural chat timing, and daily cleanup. D1 keys prevent duplicate chat slots and guarantee one GPT-6 Luna sprint per day. Local-time guards handle daylight-saving time. If either model is unavailable, deterministic copy is stored instead.
 
-The no-token weekday leadership cadence follows the reporting chain: Vader holds 1:1s with Fett, Tarkin, and Palpatine; Palpatine holds Luke's 1:1; and Palpatine's next manager sync with Vader includes a concise update on Luke's current proposal, response to feedback, tests, blockers, workload, and next development step. Evidence-to-architecture training, morale checks, and team-building practice remain in the rotation. Every 14 days, deterministic code turns real assignment, completion, failure, and handoff metrics for Vader's three direct reports into a Commander-facing development review. It cannot invent evidence, adds no model cost, and treats low assignment volume as a workload signal rather than weak performance.
+The no-token weekday leadership cadence follows the reporting chain: Tarkin holds Fett's 1:1 and takes Fett's workload, evidence quality, blockers, and next development step into his own Vader 1:1 alongside his architecture and management update. Palpatine holds Luke's 1:1 and follows the same two-level reporting pattern with Vader. Evidence-to-architecture training, morale checks, and team-building practice remain in the rotation. Every 14 days, deterministic code turns real assignment, completion, failure, and handoff metrics across the council into a Commander-facing development review. It cannot invent evidence, adds no model cost, and treats low assignment volume as a workload signal rather than weak performance.
 
 ## Luke’s Workshop
 
